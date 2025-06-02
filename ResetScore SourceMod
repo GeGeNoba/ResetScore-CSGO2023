@@ -1,0 +1,54 @@
+#include <sourcemod>
+#include <sdktools> // Required for entity manipulation functions
+
+// Forward declaration for the command handler function
+public Action Command_ResetScore(int client, int args);
+
+public void OnPluginStart()
+{
+    // Register the chat/console commands!rs and!resetscore
+    // These commands will call the Command_ResetScore function when used.
+    RegConsoleCmd("sm_rs", Command_ResetScore, "Resets your in-game score to zero.");
+    RegConsoleCmd("sm_resetscore", Command_ResetScore, "Resets your in-game score to zero.");
+}
+
+public Action Command_ResetScore(int client, int args)
+{
+    // Basic validation: Check if the client is valid, connected, and in-game.
+    if (!IsValidClient(client))
+    {
+        ReplyToCommand(client, "You must be in-game to use this command.");
+        return Plugin_Handled; // Indicate that the command was processed
+    }
+
+    // Step 1: Create a temporary 'game_score' entity.
+    // This entity is used by the game engine to modify player scores.
+    int entity = CreateEntityByName("game_score");
+    if (entity == -1) // Check if entity creation failed
+    {
+        ReplyToCommand(client, "Error: Could not create score reset entity. Please contact server admin.");
+        return Plugin_Handled;
+    }
+
+    // Step 2: Set the 'points' keyvalue of the created entity to "0".
+    // This tells the 'game_score' entity to set the target player's score to zero.
+    DispatchKeyValue(entity, "points", "0");
+
+    // Step 3: Trigger the 'ApplyScore' input on the entity, targeting the client.
+    // This applies the "0" points to the player's score.
+    AcceptEntityInput(entity, "ApplyScore", client);
+
+    // Step 4: Destroy the temporary 'game_score' entity to clean up resources.
+    AcceptEntityInput(entity, "Kill");
+
+    // Inform the player that their score has been reset.
+    ReplyToCommand(client, "Your score has been reset!");
+
+    return Plugin_Handled; // Command successfully handled
+}
+
+// Helper function to check if a client is valid and in-game
+bool IsValidClient(int client)
+{
+    return client > 0 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client);
+}
